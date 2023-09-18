@@ -15,17 +15,7 @@ bool insert(BPlusTree *root, int value)
     return true;
   }
   // CASO 2 - o nó onde o valor deveria ser inserido está cheio
-  else 
-  {
-    printf("NO CHEIO\n");
-    // adicionar ao nó pai
-    // if (node->parent)
-    // {
-    //   int valueToParent;
-    //   BPlusTree newNode = splitNode(node, &valueToParent);
-    //   insert(node->parent, valueToParent);
-    // }
-  }
+  printf("NO CHEIO\n");
   return false;
 }
 bool search(BPlusTree *root, int value)
@@ -33,15 +23,7 @@ bool search(BPlusTree *root, int value)
   // search the correct leaf node 
   BPlusTree *curr = findCorrectLeafNode(root, value);
   // check if the requested value is within the node
-  for (int i = 0, n = numOfKeys(curr); i < n; i++)
-  {
-    if (curr->keys[i] == value)
-    {
-      return true;
-    }
-  }
-  // return false if not found
-  return false;
+  return searchOnNode(curr, value);
 }
 bool removeValue(BPlusTree *root, int value)
 {
@@ -82,6 +64,19 @@ bool insertKey(BPlusTree *node, int value)
   node->numOfKeys++;
   return true;
 }
+bool searchOnNode(BPlusTree *node, int value)
+{
+  for (int i = 0, n = numOfKeys(node); i < n; i++)
+  {
+    if (node->keys[i] == value)
+    {
+      // return true if found
+      return true;
+    }
+  }
+  // return false if not found
+  return false;
+}
 BPlusTree *findCorrectLeafNode(BPlusTree *root, int value)
 {
   // utilizando variavel curr para percorrer a arvore
@@ -89,25 +84,18 @@ BPlusTree *findCorrectLeafNode(BPlusTree *root, int value)
   // iterando encontrar um nó folha
   while (!isLeaf(curr))
   {
-    // Se o valor a ser inserido for maior que o maior valor armazenado no nó
-    if (value >= curr->keys[ORDER - 2])
     {
-      // ireamos para o ponteiro mais a direita
-      curr = curr->childrens[ORDER - 1];
-    }
-    // caso contrário
-    else
-    {
+      int position = 0;
       // iteramos pelo array de chaves
       for (int i = 0; i < ORDER - 1; i++)
       {
         // caso o valor a ser inserido seja menor que o valor armazenado na posicao i do nó
-        if (value < curr->keys[i])
+        if (value >= curr->keys[i])
         {
-          curr = curr->childrens[i];
-          break;
+          position++;
         }
       }
+      curr = curr->childrens[position];
     }
   }
   return curr;

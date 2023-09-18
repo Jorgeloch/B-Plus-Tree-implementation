@@ -27,6 +27,7 @@ bool isLeaf(BPlusTree *node);
 bool isFull(BPlusTree *node);
 bool isNotFull(BPlusTree *node);
 bool insertKey(BPlusTree *node, int value);
+bool searchOnNode(BPlusTree *node, int value);
 int numOfKeys(BPlusTree *node);
 BPlusTree *findCorrectLeafNode(BPlusTree *root, int value);
 BPlusTree *createNode();
