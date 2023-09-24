@@ -42,7 +42,6 @@ void initializeTree(BPlusTree *tree)
 void insertKey(BPlusTree *tree, Node *node, void *child, int value)
 {
   int i = numOfKeys(node) - 1;
-  int j = numOfKeys(node);
   while (i >= 0 && value < node->keys[i])
   {
     node->keys[i + 1] = node->keys[i];
@@ -50,37 +49,60 @@ void insertKey(BPlusTree *tree, Node *node, void *child, int value)
   }
   node->keys[i + 1] = value;
   node->numOfKeys++;
+  int j = numOfKeys(node) - 1;
+  for (; j > i + 1; j--)
+  {
+    node->childrens[j + 1] = node->childrens[j];
+  }
+  node->childrens[j + 1] = child;
   if (isFull(node))
   {
-    printf("Node has suffered an overflow\n");
     splitNode(tree, node);
   }
 }
 void printNode(Node *node)
 {
   int n = numOfKeys(node);
-  printf("address: %p\n", node);
-  printf("Parent: %p\n", node->parent);
   printf("Keys: [ ");
   for (int i = 0; i < n; i++)
   {
     printf("%d ", node->keys[i]);
   }
   printf("]\n");
-  printf("Number Of Keys: %d\n", numOfKeys(node));
-  printf("Childrens: [ ");
+  printf("Childrens: [\n");
   for (int i = 0; i < n + 1; i++)
   {
     if (node->childrens[i])
     {
-      printf("\n\n");
+      printf("\n");
       printNode(node->childrens[i]);
-      printf("\n\n");
+      printf("\n");
     }
   }
   printf("]\n");
-  printf("Leaf: %s\n", node->leaf ? "True" : "False");
-  printf("Next: %p\n", node->leaf ? node->next : NULL);
+}
+void printLeaf(Node *leaf)
+{
+  while(leaf)
+  {
+    printf("[ ");
+    for (int i = 0, n = numOfKeys(leaf); i < n; i ++)
+    {
+      printf("%d ", leaf->keys[i]);
+    }
+    printf("] => ");
+    leaf = leaf->next;
+  }
+  printf("NULL\n");
+}
+void printTree(BPlusTree *tree)
+{
+  Node *curr = tree->root;
+  while (!isLeaf(curr))
+  {
+    curr = curr->childrens[0];
+  }
+  printLeaf(curr);
 }
 bool splitNode(BPlusTree *tree, Node *node)
 {
@@ -90,11 +112,18 @@ bool splitNode(BPlusTree *tree, Node *node)
   for (int i = 0; i < ORDER; i++)
   {
     newNode->keys[i] = node->keys[ORDER + i];
+    node->keys[ORDER + i] = 0;
   }
   newNode->keys[ORDER] = node->keys[2 * ORDER];
-  for (int i = 0; i < ORDER + 1; i++)
+  for (int i = 0; i < ORDER + 2; i++)
   {
     newNode->childrens[i] = node->childrens[ORDER + i];
+    if(newNode->childrens[i])
+    {
+      Node *child = newNode->childrens[i];
+      child->parent = newNode;
+    }
+    node->childrens[ORDER + 1] = NULL;
   }
   node->numOfKeys = ORDER;
   if (!node->parent)
@@ -114,23 +143,24 @@ bool splitNode(BPlusTree *tree, Node *node)
     node->next = newNode;
     // como o valor não foi removido da árvore, apenas inserimos no no pai o valor novo
     insertKey(tree, parent, newNode, newNode->keys[0]);
-    int position = getPosition(parent->keys, numOfKeys(parent), newNode->keys[0]);
-    
     return true;
   }
   // CASO 2 - estamos em um nó interno
   // MOVER o valor da posicao 0 do nó direito no nó pai  
-  int removed = removeFromNode(newNode, newNode->keys[0]);
+  int removed = newNode->keys[0];
+  for (int i = 0, n = numOfKeys(newNode); i < n - 1; i++)
+  {
+    newNode->keys[i] = newNode->keys[i + 1];
+  }
+  newNode->numOfKeys--;
+  newNode->keys[numOfKeys(newNode)] = 0;
+  for (int j = 0, n = numOfKeys(newNode) + 2; j < n - 1; j++)
+  {
+    newNode->childrens[j] = newNode->childrens[j + 1];
+  }
+  newNode->childrens[numOfKeys(newNode) + 1] = NULL;
   insertKey(tree, parent, newNode, removed);
   return true;
-}
-void orderChildrens(Node *node, void *child, int position)
-{
-  //for (int i = numOfKeys(node); i > position; i++)
-  //{
-  // node->childrens[i + 1] = node->childrens[i];
-  //}
-  //node->childrens[position] = child;
 }
 int numOfKeys(Node *node)
 {
@@ -139,7 +169,7 @@ int numOfKeys(Node *node)
 int getPosition(int *keys, int sizeOfKeys, int value)
 {
   int position = 0;
-  while (value > keys[position] && position < sizeOfKeys)
+  while (value >= keys[position] && position < sizeOfKeys)
   {
     position++;
   }
@@ -148,18 +178,6 @@ int getPosition(int *keys, int sizeOfKeys, int value)
 int height(BPlusTree *tree)
 {
   return tree->height;
-}
-int removeFromNode(Node *node, int value)
-{
-  int n = numOfKeys(node);
-  int position = getPosition(node->keys, n, value);
-  int removed = node->keys[position];
-  for (int i = position; i < n; i++)
-  {
-    node->keys[i] = node->keys[i - 1];
-  }
-  node->numOfKeys--;
-  return removed;
 }
 Node *findCorrectLeafNode(Node *node, int value)
 {

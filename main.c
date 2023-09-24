@@ -3,14 +3,13 @@
 int main (void)
 {
   BPlusTree *tree = createTree();
-  printNode(tree->root);
-  for (int i = 0; i < 12; i++)
+  for (int value = 0; value != -1;)
   {
-    int value;
     printf("Escolha um numero: ");
     scanf("%d", &value);
     insert(tree, NULL, value);
-    printNode(tree->root);
+    system("clear");
+    printTree(tree);
   }
   int find = 0;
   do
