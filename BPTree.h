@@ -23,11 +23,17 @@ typedef struct {
 
 bool search(BPlusTree *tree, int value); // OK
 bool insert(BPlusTree *tree, void *reg, int value); // OK
-bool removeValue(BPlusTree *tree, int value);
+bool delete(BPlusTree *tree, int value);
 bool isLeaf(Node *Node); // OK
 bool isFull(Node *Node); // OK
 bool searchOnNode(Node *Node, int value); // OK
 bool splitNode(BPlusTree *tree, Node *node); // OK
+bool lookForSiblings(Node *node); 
+bool borrowLeft(Node *node, Node *parent, Node *leftSibling);
+bool borrowRight(Node *node, Node *parent, Node *rightSibling);
+bool mergeLeafLeft(Node *node, Node *parent, Node *leftSibling);
+bool mergeLeafRight(Node *node, Node *parent, Node* rightSibling);
+bool deleteFromNode(Node *node, int value);
 void insertKey(BPlusTree *tree, Node *node, void *child, int value); // OK
 void initializeTree(BPlusTree *tree); // OK
 void printNode(Node *Node); // OK

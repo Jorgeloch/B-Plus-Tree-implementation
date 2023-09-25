@@ -8,6 +8,131 @@ bool insert(BPlusTree *tree, void *reg, int value)
   insertKey(tree, leaf, reg, value);
   return true;
 }
+bool delete(BPlusTree *tree, int value)
+{
+  if (search(tree, value))
+  {
+    return deleteFromNode(findCorrectLeafNode(tree->root, value), value);
+  }
+  return false;
+}
+bool deleteFromNode(Node *node, int value)
+{
+  int position = 0;
+  while (node->keys[position] != value)
+  {
+    position++;
+  }
+  for (int n = numOfKeys(node); position < n; position++)
+  {
+    node->keys[position] = node->keys[position + 1];
+  }
+  node->numOfKeys--;
+  if (numOfKeys(node) >= ORDER)
+  {
+    return true;
+  }
+  return lookForSiblings(node);
+}
+bool lookForSiblings(Node *node)
+{
+  Node *parent = node->parent;
+  Node *leftSibling = NULL, *rightSibling = NULL;
+
+  for (int i = 0, n = numOfKeys(parent); i <= n; i++)
+  {
+    if (parent->childrens[i + 1] == node)
+    {
+      leftSibling = parent->childrens[i];
+    }
+    if (i > 0 && parent->childrens[i - 1] == node)
+    {
+      rightSibling = parent->childrens[i];
+      break;
+    }
+  }
+
+  if (rightSibling != NULL && numOfKeys(rightSibling) > ORDER)
+  {
+    return borrowRight(node, parent, rightSibling);
+  }
+  if (leftSibling != NULL && numOfKeys(leftSibling) > ORDER)
+  {
+    return borrowLeft(node, parent, leftSibling);
+  }
+  return false;
+}
+bool borrowLeft(Node *node, Node *parent, Node *leftSibling)
+{
+  // inserir maior chave do irmao esquerdo
+  int biggerKey = leftSibling->keys[numOfKeys(leftSibling) - 1];
+  leftSibling->numOfKeys--;
+  // reordenar array de chaves do irmao esquerdo
+  int position = numOfKeys(node) - 1;
+  while(position >= 0)
+  {
+    node->keys[position + 1] = node->keys[position];
+    position--;
+  }
+  node->keys[0] = biggerKey;
+  // incrementar numero de chaves no no alvo
+  node->numOfKeys++;
+
+  position = 0;
+  while (parent->keys[position] != node->keys[1])
+  {
+    position++;
+  }
+  parent->keys[position] = biggerKey;
+  return true;
+}
+bool borrowRight(Node *node, Node *parent, Node *rightSibling)
+{
+  int smallerKey = rightSibling->keys[0];
+  node->keys[numOfKeys(node)] = smallerKey;
+  node->numOfKeys++;
+
+  for (int i = 0, n = numOfKeys(rightSibling) - 1; i < n; i++)
+  {
+    rightSibling->keys[i] = rightSibling->keys[i + 1];
+  }
+  rightSibling->numOfKeys--;
+
+  int position = 0;
+  while (parent->keys[position] != node->keys[numOfKeys(node) - 1])
+  {
+    position++;
+  }
+  parent->keys[position] = rightSibling->keys[0];
+  return true;
+}
+bool mergeLeafLeft (Node *node, Node *parent, Node *leftSibling)
+{
+  int smallerKey  = node->keys[0];
+  leftSibling->next = node->next;
+  for (int i = 0, n = numOfKeys(node); i < n; i++)
+  {
+    leftSibling->keys[ORDER + i] = node->keys[i];
+    leftSibling->numOfKeys++;
+  }
+  free(node);
+  return deleteFromNode(parent, smallerKey);
+}
+bool mergeNodeLeft (Node *node, Node *parent, Node *leftSibling)
+{
+  for (int i = 0, n = numOfKeys(node); i < n; i++)
+  {
+    leftSibling->keys[ORDER + i] = node->keys[i];
+    leftSibling->numOfKeys++;
+  }
+  for (int i = 1, n = numOfKeys(node); i <= n; i++)
+  {
+    leftSibling->childrens[ORDER + 1] = node->childrens[i];
+  }
+  free(node);
+  return deleteFromNode(parent, leftSibling->keys[0]);
+}
+
 bool search(BPlusTree *tree, int value)
 {
   Node *node = findCorrectLeafNode(tree->root, value);
@@ -185,7 +310,7 @@ Node *findCorrectLeafNode(Node *node, int value)
   while (!isLeaf(curr))
   {
     int position = 0;
-    while (value > curr->keys[position] && position < numOfKeys(curr))
+    while (value >= curr->keys[position] && position < numOfKeys(curr))
     {
       position++;
     }

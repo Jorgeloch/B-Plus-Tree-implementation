@@ -14,8 +14,9 @@ int main (void)
   int find = 0;
   do
   {
-    printf("Qual valor voce deseja procurar?");
+    printf("Qual valor voce deseja procurar? ");
     scanf("%d", &find);
+    system("clear");
     if (!search(tree, find))
     {
       printf("not found!\n");
@@ -24,4 +25,21 @@ int main (void)
     printf("found!\n");
   }
   while (find != -1);
+  
+  int remove = 0;
+  do
+  {
+    printf("Qual valor voce deseja remover? ");
+    scanf("%d", &remove);
+    system("clear");
+    if (!delete(tree, remove))
+    {
+      printf("not removed or unbalanced!\n");
+      printTree(tree);
+      continue;
+    }
+    printf("removed and balanced!\n");
+    printTree(tree);
+  }
+  while (remove != -1);
 }
