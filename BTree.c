@@ -1,7 +1,19 @@
 #include "BPTree.h"
 
+bool search(BPlusTree *tree, int value)
+{
+  // encontra o nó onde a chave deveria estar
+  Node *node = findCorrectLeafNode(tree->root, value);
+  // realiza a busca no array de chaves do no
+  return searchOnNode(node, value);
+}
 bool insert(BPlusTree *tree, void *reg, int value)
 {
+  // se o valor ja existir na arvore
+  if (search(tree, value))
+  {
+    return false;
+  }
   // encontrar nó onde o valor deve ser inserido
   Node *leaf = findCorrectLeafNode(tree->root, value);
   // inserir valor no nó em ordem
@@ -10,35 +22,42 @@ bool insert(BPlusTree *tree, void *reg, int value)
 }
 bool delete(BPlusTree *tree, int value)
 {
+  // se o valor existir 
   if (search(tree, value))
   {
+    // deletar valor do no
     return deleteFromNode(findCorrectLeafNode(tree->root, value), value);
   }
   return false;
 }
 bool deleteFromNode(Node *node, int value)
 {
+  // encontrar posicao do valor a ser deletado
   int position = 0;
   while (node->keys[position] != value)
   {
     position++;
   }
+  // remover o valor do array
   for (int n = numOfKeys(node); position < n; position++)
   {
     node->keys[position] = node->keys[position + 1];
   }
+  // decrementar em um o numero de elementos no nó
   node->numOfKeys--;
-  if (numOfKeys(node) >= ORDER)
+  if (numOfKeys(node) < ORDER && node->parent)
   {
-    return true;
+    // caso o nó possua um pai e o numero de elementos seja menor que o minimo
+    return lookForSiblings(node);
   }
-  return lookForSiblings(node);
+  return true;
 }
 bool lookForSiblings(Node *node)
 {
+  // inicializando variavies
   Node *parent = node->parent;
   Node *leftSibling = NULL, *rightSibling = NULL;
-
+  // buscando o nó irmão direito e irmão esquerdo
   for (int i = 0, n = numOfKeys(parent); i <= n; i++)
   {
     if (parent->childrens[i + 1] == node)
@@ -51,33 +70,37 @@ bool lookForSiblings(Node *node)
       break;
     }
   }
-
+  // se exisitir irmao direito e o mesmo puder emprestar uma chave
   if (rightSibling != NULL && numOfKeys(rightSibling) > ORDER)
   {
+    // chama funcao para pegar emprestado do direito
     return borrowRight(node, parent, rightSibling);
   }
+  // se existir irmao esquerdo e o mesmo puder emprestar uma chave
   if (leftSibling != NULL && numOfKeys(leftSibling) > ORDER)
   {
+    // chama funcao para pegar emprestado do esquero
     return borrowLeft(node, parent, leftSibling);
   }
-  return false;
+  return true;
 }
 bool borrowLeft(Node *node, Node *parent, Node *leftSibling)
 {
-  // inserir maior chave do irmao esquerdo
   int biggerKey = leftSibling->keys[numOfKeys(leftSibling) - 1];
+  // decrementar em um o numero de chaves no irmao esquerdo 
   leftSibling->numOfKeys--;
-  // reordenar array de chaves do irmao esquerdo
+  // reordenar chaves do nó alvo para abrir espaço para o novo elemetno 
   int position = numOfKeys(node) - 1;
   while(position >= 0)
   {
     node->keys[position + 1] = node->keys[position];
     position--;
   }
+  // inserindo nova chave no nó alvo
   node->keys[0] = biggerKey;
   // incrementar numero de chaves no no alvo
   node->numOfKeys++;
-
+  // reajustando chaves no nó pai
   position = 0;
   while (parent->keys[position] != node->keys[1])
   {
@@ -89,54 +112,25 @@ bool borrowLeft(Node *node, Node *parent, Node *leftSibling)
 bool borrowRight(Node *node, Node *parent, Node *rightSibling)
 {
   int smallerKey = rightSibling->keys[0];
+  // inserindo menor chave do irmao direito no nó alvo
   node->keys[numOfKeys(node)] = smallerKey;
+  // incrementando em um o numero de chaves no nó alvo
   node->numOfKeys++;
-
+  // remover menor chave do irmão esquerda
   for (int i = 0, n = numOfKeys(rightSibling) - 1; i < n; i++)
   {
     rightSibling->keys[i] = rightSibling->keys[i + 1];
   }
+  // decrementar em um o numero de chaves do irmao direito
   rightSibling->numOfKeys--;
-
   int position = 0;
+  // reajustando chaves do nó pai
   while (parent->keys[position] != node->keys[numOfKeys(node) - 1])
   {
     position++;
   }
   parent->keys[position] = rightSibling->keys[0];
   return true;
-}
-bool mergeLeafLeft (Node *node, Node *parent, Node *leftSibling)
-{
-  int smallerKey  = node->keys[0];
-  leftSibling->next = node->next;
-  for (int i = 0, n = numOfKeys(node); i < n; i++)
-  {
-    leftSibling->keys[ORDER + i] = node->keys[i];
-    leftSibling->numOfKeys++;
-  }
-  free(node);
-  return deleteFromNode(parent, smallerKey);
-}
-bool mergeNodeLeft (Node *node, Node *parent, Node *leftSibling)
-{
-  for (int i = 0, n = numOfKeys(node); i < n; i++)
-  {
-    leftSibling->keys[ORDER + i] = node->keys[i];
-    leftSibling->numOfKeys++;
-  }
-  for (int i = 1, n = numOfKeys(node); i <= n; i++)
-  {
-    leftSibling->childrens[ORDER + 1] = node->childrens[i];
-  }
-  free(node);
-  return deleteFromNode(parent, leftSibling->keys[0]);
-}
-
-bool search(BPlusTree *tree, int value)
-{
-  Node *node = findCorrectLeafNode(tree->root, value);
-  return searchOnNode(node, value);
 }
 bool isLeaf(Node *node)
 {
@@ -149,6 +143,7 @@ bool isFull(Node *node)
 }
 bool searchOnNode(Node *node, int value)
 {
+  // itera sobre array verificando se o valor da chave é igual ao valor buscado
   for (int i = 0, n = numOfKeys(node); i < n; i++)
   {
     if (node->keys[i] == value)
@@ -167,21 +162,28 @@ void initializeTree(BPlusTree *tree)
 void insertKey(BPlusTree *tree, Node *node, void *child, int value)
 {
   int i = numOfKeys(node) - 1;
+  // itera sobre o array movendo cada chave maior que o valor a ser inserido para a direita
   while (i >= 0 && value < node->keys[i])
   {
     node->keys[i + 1] = node->keys[i];
     i--;
   }
+  // insere o novo valor na posicao correta
   node->keys[i + 1] = value;
+  // incrementa em um o numero de chaves da prova
   node->numOfKeys++;
   int j = numOfKeys(node) - 1;
+  // itera sobre o array de filhos do nó movendo cada um para a direita ate a posicao correta
   for (; j > i + 1; j--)
   {
     node->childrens[j + 1] = node->childrens[j];
   }
+  // insere ponteiro para o filho na posicao correta
   node->childrens[j + 1] = child;
+  // verifica se atingiu o limite maximo de chaves
   if (isFull(node))
   {
+    // divide o nó em dois novos nós
     splitNode(tree, node);
   }
 }
@@ -231,15 +233,18 @@ void printTree(BPlusTree *tree)
 }
 bool splitNode(BPlusTree *tree, Node *node)
 {
+  // inicializa novo nó
   Node *newNode = createNode();
   newNode->leaf = node->leaf;
   newNode->numOfKeys = ORDER + 1;
+  // insere metade dos maiores valores no novo nó
   for (int i = 0; i < ORDER; i++)
   {
     newNode->keys[i] = node->keys[ORDER + i];
     node->keys[ORDER + i] = 0;
   }
   newNode->keys[ORDER] = node->keys[2 * ORDER];
+  // insere os filhos no novo nó na ordem certa
   for (int i = 0; i < ORDER + 2; i++)
   {
     newNode->childrens[i] = node->childrens[ORDER + i];
@@ -251,14 +256,21 @@ bool splitNode(BPlusTree *tree, Node *node)
     node->childrens[ORDER + 1] = NULL;
   }
   node->numOfKeys = ORDER;
+  // caso nao possua um no pai
   if (!node->parent)
   {
+    // inicializa um novo no para ser o pai
     node->parent = createNode();
+    // reajusta raiz da arvore
     tree->root = node->parent;
+    // incrementa a altura da arvore
+    tree->height++;
+    // insere os nos no pai 
     node->parent->childrens[0] = node;
     node->parent->childrens[1] = newNode;
   }
   Node *parent = node->parent;
+  // ajusta o pai do novo nó
   newNode->parent = parent;
   // CASO 1 - estamos em um nó folha
   if (isLeaf(node))
@@ -306,16 +318,20 @@ int height(BPlusTree *tree)
 }
 Node *findCorrectLeafNode(Node *node, int value)
 {
+  // inicializa variavel para percorrer a arvore
   Node *curr = node;
   while (!isLeaf(curr))
   {
+    // procura o proximo ponteiro correto
     int position = 0;
     while (value >= curr->keys[position] && position < numOfKeys(curr))
     {
       position++;
     }
+    // atualiza a variavel atual
     curr = curr->childrens[position];
   }
+  // quando encontra o nó correto, retorna o nó
   return curr;
 }
 Node *createNode()
